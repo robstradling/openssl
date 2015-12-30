@@ -498,6 +498,7 @@ typedef int (*TS_extension_cb) (struct TS_resp_ctx *, X509_EXTENSION *,
 typedef struct TS_resp_ctx {
     X509 *signer_cert;
     EVP_PKEY *signer_key;
+    const EVP_MD *signer_md;
     STACK_OF(X509) *certs;      /* Certs to include in signed data. */
     STACK_OF(ASN1_OBJECT) *policies; /* Acceptable policies. */
     ASN1_OBJECT *default_policy; /* It may appear in policies, too. */
@@ -533,6 +534,9 @@ int TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer);
 
 /* This parameter must be set. */
 int TS_RESP_CTX_set_signer_key(TS_RESP_CTX *ctx, EVP_PKEY *key);
+
+int TS_RESP_CTX_set_signer_digest(TS_RESP_CTX *ctx,
+                                  const EVP_MD *signer_digest);
 
 /* This parameter must be set. */
 int TS_RESP_CTX_set_def_policy(TS_RESP_CTX *ctx, ASN1_OBJECT *def_policy);
@@ -744,6 +748,8 @@ int TS_CONF_set_certs(CONF *conf, const char *section, const char *certs,
 int TS_CONF_set_signer_key(CONF *conf, const char *section,
                            const char *key, const char *pass,
                            TS_RESP_CTX *ctx);
+int TS_CONF_set_signer_digest(CONF *conf, const char *section,
+                               const char *md, TS_RESP_CTX *ctx);
 int TS_CONF_set_def_policy(CONF *conf, const char *section,
                            const char *policy, TS_RESP_CTX *ctx);
 int TS_CONF_set_policies(CONF *conf, const char *section, TS_RESP_CTX *ctx);

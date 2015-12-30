@@ -175,6 +175,8 @@ TS_RESP_CTX *TS_RESP_CTX_new()
     }
     memset(ctx, 0, sizeof(TS_RESP_CTX));
 
+    ctx->signer_md = EVP_sha256();
+
     /* Setting default callbacks. */
     ctx->serial_cb = def_serial_cb;
     ctx->time_cb = def_time_cb;
@@ -221,6 +223,12 @@ int TS_RESP_CTX_set_signer_key(TS_RESP_CTX *ctx, EVP_PKEY *key)
     ctx->signer_key = key;
     CRYPTO_add(&ctx->signer_key->references, +1, CRYPTO_LOCK_EVP_PKEY);
 
+    return 1;
+}
+
+int TS_RESP_CTX_set_signer_digest(TS_RESP_CTX *ctx, const EVP_MD *md)
+{
+    ctx->signer_md = md;
     return 1;
 }
 
@@ -749,7 +757,7 @@ static int TS_RESP_sign(TS_RESP_CTX *ctx)
 
     /* Add a new signer info. */
     if (!(si = PKCS7_add_signature(p7, ctx->signer_cert,
-                                   ctx->signer_key, EVP_sha1()))) {
+                                   ctx->signer_key, ctx->signer_md))) {
         TSerr(TS_F_TS_RESP_SIGN, TS_R_PKCS7_ADD_SIGNATURE_ERROR);
         goto err;
     }
