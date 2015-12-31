@@ -96,13 +96,14 @@ static ASN1_INTEGER *create_nonce(int bits);
 /* Reply related functions. */
 static int reply_command(CONF *conf, char *section, char *engine, 
 			 char *queryfile, char *passin, char *inkey, 
-			 char *signer, char *chain, const char *policy, 
-			 char *in, int token_in, char *out, int token_out,
-			 int text);
+			 const EVP_MD *md, char *signer, char *chain,
+			 const char *policy, char *in, int token_in,
+			 char *out, int token_out, int text);
 static TS_RESP *read_PKCS7(BIO *in_bio);
 static TS_RESP *create_response(CONF *conf, const char *section, char *engine,
-				char *queryfile, char *passin, char *inkey,
-				char *signer, char *chain, const char *policy);
+				char *queryfile, char *passin,
+				char *inkey, const EVP_MD *md, char *signer,
+				char *chain, const char *policy);
 static ASN1_INTEGER * MS_CALLBACK serial_cb(TS_RESP_CTX *ctx, void *data);
 static ASN1_INTEGER *next_serial(const char *serialfile);
 static int save_ts_serial(const char *serialfile, ASN1_INTEGER *serial);
@@ -348,7 +349,7 @@ int MAIN(int argc, char **argv)
 			}
 
 		ret = !reply_command(conf, section, engine, queryfile, 
-				     password, inkey, signer, chain, policy, 
+				     password, inkey, md, signer, chain, policy, 
 				     in, token_in, out, token_out, text);
 		break;
 	case CMD_VERIFY:
@@ -672,8 +673,8 @@ static ASN1_INTEGER *create_nonce(int bits)
 
 static int reply_command(CONF *conf, char *section, char *engine, 
 			 char *queryfile, char *passin, char *inkey,
-			 char *signer, char *chain, const char *policy, 
-			 char *in, int token_in,
+			 const EVP_MD *md, char *signer, char *chain,
+			 const char *policy, char *in, int token_in,
 			 char *out, int token_out, int text)
 	{
 	int ret = 0;
@@ -703,7 +704,7 @@ static int reply_command(CONF *conf, char *section, char *engine,
 	else
 		{
 		response = create_response(conf, section, engine, queryfile,
-					   passin, inkey, signer, chain,
+					   passin, inkey, md, signer, chain,
 					   policy);
 		if (response)
 			BIO_printf(bio_err, "Response has been generated.\n");
@@ -798,8 +799,9 @@ static TS_RESP *read_PKCS7(BIO *in_bio)
 	}
 
 static TS_RESP *create_response(CONF *conf, const char *section, char *engine, 
-				char *queryfile, char *passin, char *inkey,
-				char *signer, char *chain, const char *policy)
+				char *queryfile, char *passin,
+				char *inkey, const EVP_MD *md, char *signer,
+				char *chain, const char *policy)
 	{
 	int ret = 0;
 	TS_RESP *response = NULL;
@@ -832,6 +834,12 @@ static TS_RESP *create_response(CONF *conf, const char *section, char *engine,
 	/* Setting TSA signer private key. */
 	if (!TS_CONF_set_signer_key(conf, section, inkey, passin, resp_ctx))
 		goto end;
+
+	if (md) {
+		if (!TS_RESP_CTX_set_signer_digest(resp_ctx, md)) goto end;
+	} else if (!TS_CONF_set_signer_digest(conf, section, NULL, resp_ctx)) {
+		goto end;
+	}
 
 	/* Setting default policy OID. */
 	if (!TS_CONF_set_def_policy(conf, section, policy, resp_ctx)) goto end;
